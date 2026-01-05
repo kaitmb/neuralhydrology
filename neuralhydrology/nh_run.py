@@ -53,9 +53,11 @@ def _main():
         raise RuntimeError(f"Unknown mode {args['mode']}")
 
 
-def start_run(config_file: Path, gpu: int = None):
+def start_run(config_file: Path,
+              filepaths_dict: dict = None,
+              gpu: int = None,):
     """Start training a model.
-    
+
     Parameters
     ----------
     config_file : Path
@@ -74,10 +76,36 @@ def start_run(config_file: Path, gpu: int = None):
     if gpu is not None and gpu < 0:
         config.device = "cpu"
 
+    # Check if additional filepaths_dict has been provided. If yes, append to current config
+    if filepaths_dict is not None:
+        # Set data directories based on computer (i.e., iMac or HPC)
+        if "data_dir" in filepaths_dict.keys():
+            config.data_dir = filepaths_dict["data_dir"]
+
+        if "run_dir" in filepaths_dict.keys():
+            config.run_dir = filepaths_dict["run_dir"]
+
+        # Check if basin files reference current directory or run_dir (if provided)
+        if "parent_run_dir" in filepaths_dict.keys():
+            basin_files = ["train_basin_file", "validation_basin_file", "test_basin_file"]
+            basin_filepaths = {}
+            for file in basin_files:
+                # Get file name (stem)
+                file_name = config._get_value_verbose(file).name
+
+                # Add filepath to dict in format Path(run_dir) / file_name
+                basin_filepaths[file] = Path(filepaths_dict["parent_run_dir"]) / file_name
+
+            # Update config
+            config.update_config(basin_filepaths)
+
     start_training(config)
 
-
-def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
+def continue_run(run_dir: Path,
+                 config_file: Path = None,
+                 gpu: int = None,
+                 filepaths_dict: dict = None
+                 ):
     """Continue model training.
     
     Parameters
@@ -92,7 +120,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
 
     """
     # load config from base run and overwrite all elements with an optional new config
-    base_config = Config(run_dir / "config.yml")
+    base_config = Config(run_dir / "config.yaml")
 
     if config_file is not None:
         base_config.update_config(config_file)
@@ -105,6 +133,26 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
         base_config.device = f"cuda:{gpu}"
     if gpu is not None and gpu < 0:
         base_config.device = "cpu"
+
+    # Check if additional filepaths_dict has been provided. If yes, append to current config
+    if filepaths_dict is not None:
+        # Set data directories based on computer (i.e., iMac or HPC)
+        if "data_dir" in filepaths_dict.keys():
+            base_config.data_dir = filepaths_dict["data_dir"]
+
+        # Check if basin files reference current directory or run_dir (if provided)
+        if "parent_run_dir" in filepaths_dict.keys():
+            basin_files = ["train_basin_file", "validation_basin_file", "test_basin_file"]
+            basin_filepaths = {}
+            for file in basin_files:
+                # Get file name (stem)
+                file_name = base_config._get_value_verbose(file).name
+
+                # Add filepath to dict in format Path(run_dir) / file_name
+                basin_filepaths[file] = Path(filepaths_dict["parent_run_dir"]) / file_name
+
+            # Update base_config
+            base_config.update_config(basin_filepaths)
 
     start_training(base_config)
 
@@ -130,7 +178,7 @@ def finetune(config_file: Path = None, gpu: int = None):
         raise ValueError("For finetuning, at least one model part has to be specified by 'finetune_modules'.")
 
     # extract base run dir, load base run config and combine with the finetune arguments
-    config = Config(temp_config.base_run_dir / "config.yml")
+    config = Config(temp_config.base_run_dir / "config.yaml")
     config.update_config({'run_dir': None, 'experiment_name': None})
     config.update_config(config_file)
     config.is_finetuning = True
@@ -163,7 +211,7 @@ def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
         Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
-    config = Config(run_dir / "config.yml")
+    config = Config(run_dir / "config.yaml")
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
     if gpu is not None and gpu >= 0:

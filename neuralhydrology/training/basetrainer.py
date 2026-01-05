@@ -23,6 +23,31 @@ from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.logging_utils import setup_logging
 from neuralhydrology.training.earlystopper import EarlyStopper
+import logging
+import pickle
+import random
+import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Dict
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+import neuralhydrology.training.loss as loss
+from neuralhydrology.datasetzoo import get_dataset
+from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.datautils.utils import load_basin_file, load_scaler
+from neuralhydrology.evaluation import get_tester
+from neuralhydrology.evaluation.tester import BaseTester
+from neuralhydrology.modelzoo import get_model
+from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
+from neuralhydrology.training.logger import Logger
+from neuralhydrology.utils.config import Config
+from neuralhydrology.utils.logging_utils import setup_logging
+from neuralhydrology.training.earlystopper import EarlyStopper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -411,7 +436,11 @@ class BaseTrainer(object):
             if self.cfg.run_dir is None:
                 self.cfg.run_dir = Path().cwd() / "runs" / run_name
             else:
-                self.cfg.run_dir = self.cfg.run_dir / run_name
+                # Check if directory already ends in "runs"
+                if not self.cfg.run_dir.parts[-1] == "runs":
+                    self.cfg.run_dir = self.cfg.run_dir / "runs" / run_name
+                else:
+                    self.cfg.run_dir = self.cfg.run_dir / run_name
 
         # create folder + necessary subfolder
         if not self.cfg.run_dir.is_dir():

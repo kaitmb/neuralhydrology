@@ -38,8 +38,9 @@ class Config(object):
     _deprecated_keys = [
         'static_inputs', 'camels_attributes', 'target_variable', 'embedding_hiddens', 'embedding_activation',
         'embedding_dropout'
-    ]
+        ]
     _metadata_keys = ['package_version', 'commit_hash']
+
 
     def __init__(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
         if isinstance(yml_path_or_dict, Path):
@@ -80,7 +81,7 @@ class Config(object):
 
     def as_dict(self) -> dict:
         """Return run configuration as dictionary.
-        
+
         Returns
         -------
         dict
@@ -88,7 +89,8 @@ class Config(object):
         """
         return self._cfg
 
-    def dump_config(self, folder: Path, filename: str = 'config.yml'):
+
+    def dump_config(self, folder: Path, filename: str = 'config.yaml'):
         """Save the run configuration as a .yml file to disk.
 
         Parameters
@@ -96,7 +98,7 @@ class Config(object):
         folder : Path
             Folder in which the configuration will be stored.
         filename : str, optional
-            Name of the file that will be stored. Default: 'config.yml'.
+            Name of the file that will be stored. Default: 'config.yaml'.
 
         Raises
         ------
@@ -120,12 +122,12 @@ class Config(object):
                         if isinstance(val, list):
                             temp_list = []
                             for elem in val:
-                                temp_list.append(elem.strftime(format="%d/%m/%Y"))
+                                temp_list.append(elem.strftime(format="%Y-%m-%d"))
                             temp_cfg[key] = temp_list
                         else:
                             # Ignore None's due to e.g. using a per_basin_period_file
                             if isinstance(val, pd.Timestamp):
-                                temp_cfg[key] = val.strftime(format="%d/%m/%Y")
+                                temp_cfg[key] = val.strftime(format="%Y-%m-%d")
                     else:
                         temp_cfg[key] = val
 
@@ -136,10 +138,10 @@ class Config(object):
 
     def update_config(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
         """Update config arguments.
-        
+
         Useful e.g. in the context of fine-tuning or when continuing to train from a checkpoint to adapt for example the
         learning rate, train basin files or anything else.
-        
+
         Parameters
         ----------
         yml_path_or_dict : Union[Path, dict]
@@ -160,10 +162,11 @@ class Config(object):
 
         self._cfg.update(new_config.as_dict())
 
+
     def _get_value_verbose(self, key: str) -> Union[float, int, str, list, dict, Path, pd.Timestamp]:
         """Use this function internally to return attributes of the config that are mandatory"""
         if key not in self._cfg.keys():
-            raise ValueError(f"{key} is not specified in the config (.yml).")
+            raise ValueError(f"{key} is not specified in the config (.yaml).")
         elif self._cfg[key] is None:
             raise ValueError(f"{key} is mandatory but 'None' in the config.")
         else:
@@ -187,6 +190,7 @@ class Config(object):
         else:
             raise RuntimeError(f"Incompatible type {type(value)}. Expected `dict` or `None`.")
 
+
     @staticmethod
     def _check_cfg_keys(cfg: dict):
         """Checks the config for unknown keys. """
@@ -195,7 +199,7 @@ class Config(object):
         unknown_keys = [
             k for k in cfg.keys()
             if k not in property_names and k not in Config._deprecated_keys and k not in Config._metadata_keys
-        ]
+            ]
         if unknown_keys:
             raise ValueError(f'{unknown_keys} are not recognized config keys.')
 
@@ -204,7 +208,7 @@ class Config(object):
         for key, val in cfg.items():
             # convert all path strings to PosixPath objects
             if any([key.endswith(x) for x in ['_dir', '_path', '_file', '_files']]):
-                if (val is not None) and (val != "None"):
+                if (val is not None) and (val!="None"):
                     if isinstance(val, list):
                         temp_list = []
                         for element in val:
@@ -220,10 +224,10 @@ class Config(object):
                 if isinstance(val, list):
                     temp_list = []
                     for elem in val:
-                        temp_list.append(pd.to_datetime(elem, format='%d/%m/%Y'))
+                        temp_list.append(pd.to_datetime(elem, format='%Y-%m-%d'))
                     cfg[key] = temp_list
                 else:
-                    cfg[key] = pd.to_datetime(val, format='%d/%m/%Y')
+                    cfg[key] = pd.to_datetime(val, format='%Y-%m-%d')
 
             else:
                 pass
@@ -285,10 +289,6 @@ class Config(object):
         return self._get_value_verbose("batch_size")
 
     @property
-    def bidirectional_stacked_forecast_lstm(self) -> bool:
-        return self._cfg.get("bidirectional_stacked_forecast_lstm", False)
-
-    @property
     def cache_validation_data(self) -> bool:
         return self._cfg.get("cache_validation_data", True)
 
@@ -316,9 +316,25 @@ class Config(object):
     def data_dir(self) -> Path:
         return self._get_value_verbose("data_dir")
 
+    @data_dir.setter
+    def data_dir(self, folder: Path):
+        self._cfg["data_dir"] = folder
+
     @property
     def dataset(self) -> str:
         return self._get_value_verbose("dataset")
+
+    @property
+    def ssp(self) -> str:
+        return self._get_value_verbose("ssp")
+
+    @property
+    def scale(self) -> str:
+        return self._get_value_verbose("scale")
+
+    @property
+    def ensemble_member(self) -> str:
+        return self._get_value_verbose("ensemble_member")
 
     @property
     def device(self) -> str:
@@ -326,7 +342,7 @@ class Config(object):
 
     @device.setter
     def device(self, device: str):
-        if device == "cpu" or device.startswith("cuda:") or device == "mps":
+        if device=="cpu" or device.startswith("cuda:") or device=="mps":
             self._cfg["device"] = device
         else:
             raise ValueError("'device' must be either 'cpu', 'mps', or 'cuda:X', with 'X' being the GPU ID.")
@@ -449,43 +465,8 @@ class Config(object):
         return self._cfg.get('save_git_diff', False)
 
     @property
-    def state_handoff_network(self) -> dict:
-        embedding_spec = self._cfg.get("state_handoff_network", None)
-
-        if embedding_spec is None:
-            return None
-        return self._get_embedding_spec(embedding_spec)
-
-    @property
-    def head(self) -> str:
-        if self.model == "mclstm":
-            return ''
-        else:
-            return self._get_value_verbose("head")
-
-    @property
-    def hindcast_inputs(self) -> list[str] | list[list[str]]:
-        return self._cfg.get("hindcast_inputs", [])
-
-    @property
-    def hindcast_inputs_flattened(self) -> list[str]:
-        hindcast_inputs = self.hindcast_inputs
-        if hindcast_inputs and isinstance(hindcast_inputs[0], list):
-            return list(itertools.chain.from_iterable(hindcast_inputs))
-        else:
-            return hindcast_inputs
-
-    @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("hidden_size")
-
-    @property
-    def hindcast_hidden_size(self) -> Union[int, Dict[str, int]]:
-        return self._cfg.get("hindcast_hidden_size", self.hidden_size)
-
-    @property
-    def hydroatlas_attributes(self) -> List[str]:
-        return self._as_default_list(self._cfg.get("hydroatlas_attributes", []))
 
     @property
     def img_log_dir(self) -> Path:
@@ -529,7 +510,8 @@ class Config(object):
             else:
                 raise ValueError("Unsupported data type for learning rate. Use either dict (epoch to float) or float.")
         else:
-            raise ValueError("No learning rate specified in the config (.yml).")
+            raise ValueError("No learning rate specified in the config (.yaml).")
+
 
     @property
     def log_interval(self) -> int:
@@ -553,18 +535,6 @@ class Config(object):
     @loss.setter
     def loss(self, loss: str):
         self._cfg["loss"] = loss
-
-    @property
-    def mamba_d_conv(self) -> int:
-        return self._cfg.get("d_conv", 4)
-
-    @property
-    def mamba_d_state(self) -> int:
-        return self._cfg.get("d_state", 16)
-
-    @property
-    def mamba_expand(self) -> int:
-        return self._cfg.get("expand", 2)
 
     @property
     def mass_inputs(self) -> List[str]:
@@ -729,30 +699,6 @@ class Config(object):
     def seed(self) -> int:
         return self._cfg.get("seed", None)
 
-    @property
-    def transformer_nlayers(self) -> int:
-        return self._get_value_verbose("transformer_nlayers")
-
-    @property
-    def transformer_positional_encoding_type(self) -> str:
-        return self._get_value_verbose("transformer_positional_encoding_type")
-
-    @property
-    def transformer_dim_feedforward(self) -> int:
-        return self._get_value_verbose("transformer_dim_feedforward")
-
-    @property
-    def transformer_positional_dropout(self) -> float:
-        return self._get_value_verbose("transformer_positional_dropout")
-
-    @property
-    def transformer_dropout(self) -> float:
-        return self._get_value_verbose("transformer_dropout")
-
-    @property
-    def transformer_nheads(self) -> int:
-        return self._get_value_verbose("transformer_nheads")
-
     @seed.setter
     def seed(self, seed: int):
         if self._cfg.get("seed", None) is None:
@@ -857,10 +803,6 @@ class Config(object):
         return self._get_value_verbose("train_start_date")
 
     @property
-    def transfer_mtslstm_states(self) -> Dict[str, str]:
-        return self._cfg.get("transfer_mtslstm_states", {'h': 'linear', 'c': 'linear'})
-
-    @property
     def umal_extend_batch(self) -> bool:
         return self._cfg.get("umal_extend_batch", False)
 
@@ -920,11 +862,11 @@ class Config(object):
     def early_stopping(self) -> bool:
         """Whether to use early stopping. Defaults to False if not set."""
         early_stopping = self._cfg.get("early_stopping", False)
-        if early_stopping and self.validate_every != 1:
+        if early_stopping and self.validate_every!=1:
             raise ValueError(
-                "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
-                "Set validate_every=1 in the config to use early stopping."
-            )
+                    "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
+                    "Set validate_every=1 in the config to use early stopping."
+                    )
         return early_stopping
 
     @property
@@ -943,11 +885,11 @@ class Config(object):
     def dynamic_learning_rate(self) -> bool:
         """Whether to use  dynamic learning rate. Defaults to False if not set."""
         early_stopping = self._cfg.get("early_stopping", False)
-        if early_stopping and self.validate_every != 1:
+        if early_stopping and self.validate_every!=1:
             raise ValueError(
-                "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
-                "Set validate_every=1 in the config to use early stopping."
-            )
+                    "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
+                    "Set validate_every=1 in the config to use early stopping."
+                    )
         return early_stopping
     
     @property
@@ -983,27 +925,6 @@ class Config(object):
             'activation': embedding_spec.get('activation', 'tanh'),
             'dropout': embedding_spec.get('dropout', 0.0)
         }
-
-    @property
-    def xlstm_num_blocks(self) -> int:
-        return self._cfg.get("xlstm_num_blocks", 2)
-    
-    @property
-    def xlstm_slstm_at(self) -> List[int]:
-        return self._as_default_list(self._cfg.get("xlstm_slstm_at", [1]))
-    
-    @property
-    def xlstm_heads(self) -> int:
-        return self._cfg.get("xlstm_heads", 1)
-    
-    @property
-    def xlstm_kernel_size(self) -> int:
-        return self._cfg.get("xlstm_kernel_size", 4)
-    
-    @property
-    def xlstm_proj_factor(self) -> float:
-        return self._cfg.get("xlstm_proj_factor", 1.3)
-
 
 def create_random_name():
     adjectives = ('white', 'black', 'green', 'golden', 'modern', 'lazy', 'great', 'meandering', 'nervous', 'demanding',

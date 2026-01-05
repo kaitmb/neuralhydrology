@@ -21,7 +21,7 @@ def get_available_metrics() -> List[str]:
         List of implemented metric names.
     """
     metrics = [
-        "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
+        "NSE", "MSE", "RMSE", "rRMSE", "KGE", "Alpha-NSE", "Pearson-r", "AMJJ-PBIAS", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
         "Peak-Timing", "Missed-Peaks", "Peak-MAPE"
     ]
     return metrics
@@ -104,6 +104,7 @@ def mse(obs: DataArray, sim: DataArray) -> float:
     obs : DataArray
         Observed time series.
     sim : DataArray
+
         Simulated time series.
 
     Returns
@@ -145,6 +146,31 @@ def rmse(obs: DataArray, sim: DataArray) -> float:
     """
 
     return np.sqrt(mse(obs, sim))
+
+
+def relative_rmse(obs: DataArray, sim: DataArray) -> float:
+    r"""Calculate relative root mean squared error. (RMSE/mean(obs))
+
+    .. math:: \text{RMSE} = \sqrt{\frac{1}{T}\sum_{t=1}^T (\widehat{y}_t - y_t)^2},
+
+    where :math:`\widehat{y}` are the simulations (here, `sim`) and :math:`y` are observations
+    (here, `obs`).
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        Root mean sqaured error.
+
+    """
+
+    return np.sqrt(mse(obs, sim)) / np.mean([obs])
 
 
 def alpha_nse(obs: DataArray, sim: DataArray) -> float:
@@ -346,6 +372,64 @@ def pearsonr(obs: DataArray, sim: DataArray) -> float:
     r, _ = stats.pearsonr(obs.values, sim.values)
 
     return float(r)
+
+def amjj_pbias(obs: DataArray, sim: DataArray) -> float:
+    """Calculate AMJJ percent bias
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        AMJJ percent bias
+
+    """
+
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    if len(obs) < 2:
+        return np.nan
+
+    # Get unique years within dataset
+    years = np.unique(obs.datetime.dt.year.values.tolist())[1:] # Excluding first year (because we are using WY)
+
+    # Isolate AMJJ values
+    amjj_obs = obs.sel(datetime=obs.datetime.dt.month.isin([4, 5, 6]))
+    amjj_sim = sim.sel(datetime=obs.datetime.dt.month.isin([4, 5, 6]))
+
+    # Create list to calculate annual volumes for AMJJ streamflow
+    annual_obs  = []
+    annual_sim = []
+
+    for year in years:
+        # Make sure data exists for both obs and sim for a given year
+        obs_sel = amjj_obs.sel(datetime=amjj_obs.datetime.dt.year.isin([year]))
+        sim_sel = amjj_sim.sel(datetime=amjj_sim.datetime.dt.year.isin([year]))
+
+        if obs_sel.size == 0 or sim_sel.size == 0:
+            continue
+
+        annual_obs_value = float(obs_sel.sum().values.item())
+        annual_sim_value = float(sim_sel.sum().values.item())
+
+        annual_obs.append(annual_obs_value)
+        annual_sim.append(annual_sim_value)
+
+    # Calculate bias over all years
+    annual_obs = np.array(annual_obs)
+    annual_sim = np.array(annual_sim)
+    pbias = 100.0 * (sum(annual_sim - annual_obs)) / (sum(annual_obs))
+
+    return float(pbias)
 
 
 def fdc_fms(obs: DataArray, sim: DataArray, lower: float = 0.2, upper: float = 0.7) -> float:
@@ -788,11 +872,13 @@ def calculate_all_metrics(obs: DataArray,
         "NSE": nse(obs, sim),
         "MSE": mse(obs, sim),
         "RMSE": rmse(obs, sim),
+        "rRMSE": relative_rmse(obs, sim),
         "KGE": kge(obs, sim),
         "Alpha-NSE": alpha_nse(obs, sim),
         "Beta-KGE": beta_kge(obs, sim),
         "Beta-NSE": beta_nse(obs, sim),
         "Pearson-r": pearsonr(obs, sim),
+        "AMJJ-PBIAS": pearsonr(obs, sim),
         "FHV": fdc_fhv(obs, sim),
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
@@ -846,6 +932,8 @@ def calculate_metrics(obs: DataArray,
             values["MSE"] = mse(obs, sim)
         elif metric.lower() == "rmse":
             values["RMSE"] = rmse(obs, sim)
+        elif metric.lower()=="rrmse":
+            values["rRMSE"] = relative_rmse(obs, sim)
         elif metric.lower() == "kge":
             values["KGE"] = kge(obs, sim)
         elif metric.lower() == "alpha-nse":
@@ -856,6 +944,8 @@ def calculate_metrics(obs: DataArray,
             values["Beta-NSE"] = beta_nse(obs, sim)
         elif metric.lower() == "pearson-r":
             values["Pearson-r"] = pearsonr(obs, sim)
+        elif metric.lower() == "amjj-pbias":
+            values["AMJJ-PBIAS"] = amjj_pbias(obs, sim)
         elif metric.lower() == "fhv":
             values["FHV"] = fdc_fhv(obs, sim)
         elif metric.lower() == "fms":
