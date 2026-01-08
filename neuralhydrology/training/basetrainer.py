@@ -23,31 +23,6 @@ from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.logging_utils import setup_logging
 from neuralhydrology.training.earlystopper import EarlyStopper
-import logging
-import pickle
-import random
-import sys
-from datetime import datetime
-from pathlib import Path
-from typing import Dict
-
-import numpy as np
-import torch
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-
-import neuralhydrology.training.loss as loss
-from neuralhydrology.datasetzoo import get_dataset
-from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import load_basin_file, load_scaler
-from neuralhydrology.evaluation import get_tester
-from neuralhydrology.evaluation.tester import BaseTester
-from neuralhydrology.modelzoo import get_model
-from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
-from neuralhydrology.training.logger import Logger
-from neuralhydrology.utils.config import Config
-from neuralhydrology.utils.logging_utils import setup_logging
-from neuralhydrology.training.earlystopper import EarlyStopper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -430,7 +405,7 @@ class BaseTrainer(object):
             hour = f"{now.hour}".zfill(2)
             minute = f"{now.minute}".zfill(2)
             second = f"{now.second}".zfill(2)
-            run_name = f'{self.cfg.experiment_name}_{day}{month}_{hour}{minute}{second}'
+            run_name = f'{self.cfg.experiment_name}_{month}{day}_{hour}{minute}_{second}'
 
             # if no directory for the runs is specified, a 'runs' folder will be created in the current working dir
             if self.cfg.run_dir is None:
