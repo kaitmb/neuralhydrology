@@ -91,7 +91,6 @@ def register_dataset(key: str, new_class: Type):
 
 _datasetZooRegistry: DatasetRegistry = DatasetRegistry()
 
-_datasetZooRegistry.register_dataset_class("generic", GenericDataset)
 _datasetZooRegistry.register_dataset_class("camels_us", CamelsUS)
 _datasetZooRegistry.register_dataset_class("bishay_wus", BishayWUS)
 
