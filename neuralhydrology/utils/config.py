@@ -289,6 +289,10 @@ class Config(object):
         return self._get_value_verbose("batch_size")
 
     @property
+    def bidirectional_stacked_forecast_lstm(self) -> bool:
+        return self._cfg.get("bidirectional_stacked_forecast_lstm", False)
+
+    @property
     def cache_validation_data(self) -> bool:
         return self._cfg.get("cache_validation_data", True)
 
@@ -465,8 +469,45 @@ class Config(object):
         return self._cfg.get('save_git_diff', False)
 
     @property
+    def state_handoff_network(self) -> dict:
+        embedding_spec = self._cfg.get("state_handoff_network", None)
+
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
+
+    @property
+    def head(self) -> str:
+        if self.model=="mclstm":
+            return ''
+        else:
+            return self._get_value_verbose("head")
+
+    @property
+    def hindcast_inputs(self) -> list[str] | list[list[str]]:
+        return self._cfg.get("hindcast_inputs", [])
+
+    @property
+    def hindcast_inputs_flattened(self) -> list[str]:
+        hindcast_inputs = self.hindcast_inputs
+        if hindcast_inputs and isinstance(hindcast_inputs[0], list):
+            return list(itertools.chain.from_iterable(hindcast_inputs))
+        else:
+            return hindcast_inputs
+
+    @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("hidden_size")
+
+
+    @property
+    def hindcast_hidden_size(self) -> Union[int, Dict[str, int]]:
+        return self._cfg.get("hindcast_hidden_size", self.hidden_size)
+
+
+    @property
+    def hydroatlas_attributes(self) -> List[str]:
+        return self._as_default_list(self._cfg.get("hydroatlas_attributes", []))
 
     @property
     def img_log_dir(self) -> Path:
@@ -535,6 +576,18 @@ class Config(object):
     @loss.setter
     def loss(self, loss: str):
         self._cfg["loss"] = loss
+
+    @property
+    def mamba_d_conv(self) -> int:
+        return self._cfg.get("d_conv", 4)
+
+    @property
+    def mamba_d_state(self) -> int:
+        return self._cfg.get("d_state", 16)
+
+    @property
+    def mamba_expand(self) -> int:
+        return self._cfg.get("expand", 2)
 
     @property
     def mass_inputs(self) -> List[str]:
@@ -699,6 +752,30 @@ class Config(object):
     def seed(self) -> int:
         return self._cfg.get("seed", None)
 
+    @property
+    def transformer_nlayers(self) -> int:
+        return self._get_value_verbose("transformer_nlayers")
+
+    @property
+    def transformer_positional_encoding_type(self) -> str:
+        return self._get_value_verbose("transformer_positional_encoding_type")
+
+    @property
+    def transformer_dim_feedforward(self) -> int:
+        return self._get_value_verbose("transformer_dim_feedforward")
+
+    @property
+    def transformer_positional_dropout(self) -> float:
+        return self._get_value_verbose("transformer_positional_dropout")
+
+    @property
+    def transformer_dropout(self) -> float:
+        return self._get_value_verbose("transformer_dropout")
+
+    @property
+    def transformer_nheads(self) -> int:
+        return self._get_value_verbose("transformer_nheads")
+
     @seed.setter
     def seed(self, seed: int):
         if self._cfg.get("seed", None) is None:
@@ -801,6 +878,10 @@ class Config(object):
     @property
     def train_start_date(self) -> pd.Timestamp:
         return self._get_value_verbose("train_start_date")
+
+    @property
+    def transfer_mtslstm_states(self) -> Dict[str, str]:
+        return self._cfg.get("transfer_mtslstm_states", {'h': 'linear', 'c': 'linear'})
 
     @property
     def umal_extend_batch(self) -> bool:
@@ -925,6 +1006,26 @@ class Config(object):
             'activation': embedding_spec.get('activation', 'tanh'),
             'dropout': embedding_spec.get('dropout', 0.0)
         }
+
+    @property
+    def xlstm_num_blocks(self) -> int:
+        return self._cfg.get("xlstm_num_blocks", 2)
+
+    @property
+    def xlstm_slstm_at(self) -> List[int]:
+        return self._as_default_list(self._cfg.get("xlstm_slstm_at", [1]))
+
+    @property
+    def xlstm_heads(self) -> int:
+        return self._cfg.get("xlstm_heads", 1)
+
+    @property
+    def xlstm_kernel_size(self) -> int:
+        return self._cfg.get("xlstm_kernel_size", 4)
+
+    @property
+    def xlstm_proj_factor(self) -> float:
+        return self._cfg.get("xlstm_proj_factor", 1.3)
 
 def create_random_name():
     adjectives = ('white', 'black', 'green', 'golden', 'modern', 'lazy', 'great', 'meandering', 'nervous', 'demanding',
