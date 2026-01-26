@@ -60,29 +60,24 @@ class BishayWUS(BaseDataset):
         df = load_timeseries(data_dir=self.cfg.data_dir,
                              ensemble_member=self.cfg.ensemble_member,
                              basin=basin,
-                             ssp=self.cfg.ssp,
+                             time_period=self.cfg.time_period,
                              scale=self.cfg.scale)
         return df
 
     def _load_attributes(self) -> pd.DataFrame:
         """Load static catchment attributes."""
-        return load_attributes(self.cfg.data_dir,
-                               self.cfg.ensemble_member,
-                               self.basins,
-                               self.cfg.ssp)
+        return load_attributes(self.cfg.data_dir, self.cfg.ensemble_member, self.basins, self.cfg.time_period)
 
 def load_attributes(data_dir: Path,
                     ensemble_member: str = None,
                     basins: List[str] = None,
-                    ssp: str = '370') -> pd.DataFrame:
+                    time_period: str = None) -> pd.DataFrame:
     """Load static attributes from one or more CSV files.
 
     Parameters
     ----------
     data_dir : Path
         Path to the root data directory. Must contain a 'basins' subfolder with attribute CSV files.
-    ssp : str, default '370'
-        The Shared Socioeconomic Pathway (SSP) scenario code to filter attribute files (e.g., '370').
     ensemble_member : str, optional
         If provided, filters columns related to snow variables (DSD, DSO, MAX_SWE).
     basins : List[str], optional
@@ -94,24 +89,32 @@ def load_attributes(data_dir: Path,
         If multiple attribute files are present, the returned DataFrame combines the files as outlined below.
     """
 
-    # Set path to basin attributes folder
-    basins_path = data_dir / 'basins'
-    if not basins_path.exists():
-        raise FileNotFoundError(f"Basin (attributes) folder not found at {basins_path}")
+    # Set path to attributes folder
+    attributes_path = data_dir / 'attributes'
+    if not attributes_path.exists():
+        raise FileNotFoundError(f"Attributes folder not found at {attributes_path}")
 
-    # Check for ssp and find relevant files
-    files = list(basins_path.glob(f'*{ssp}*.csv'))
+    if not time_period:
+        raise NameError(f"Time period of interest must be specified.")
+    if not ensemble_member:
+        raise NameError(f"Ensemble member/GCM of interest (or 'Hist-Daymet-USGS-UA') must be specified.")
+
+    # Get list of all files in attribute folder
+    files = list(attributes_path.glob(f'*.csv'))
     if not files:
-        raise FileNotFoundError('No attributes files found')
+        raise FileNotFoundError(f"No attributes files found.")
 
-    sel_files = [f for f in files if "selected" in f.name]
-    if ensemble_member:
-        sel_files.append([f for f in files if ensemble_member in f.name][0])
+    # Select files for time period
+    selected_files = [f for f in files if time_period in f.name]
+    # Select files for ensemble member
+    selected_files = [f for f in selected_files if ensemble_member in f.name]
+    # Add GAGES-II file to list
+    selected_files.append([f for f in files if "GAGES-II" in f.name][0])
 
     # Read-in attributes into one big dataframe. Sort by both axes so we can check for identical axes.
     dfs = []
-    for f in sel_files:
-        df = pd.read_csv(f, dtype={0: str})  # make sure we read the basin id as str
+    for f in selected_files:
+        df = pd.read_csv(f, dtype={0: str}, delimiter="\t")  # make sure we read the basin id as str
         df = df.set_index(df.columns[0]).sort_index(axis=0).sort_index(axis=1)
         df.index = df.index.map(lambda x: x.zfill(8))
         if df.index.has_duplicates or df.columns.has_duplicates:
@@ -147,7 +150,7 @@ def load_attributes(data_dir: Path,
 def load_timeseries(data_dir: Path,
                     ensemble_member: str = None,
                     basin: str = None,
-                    ssp: str = '370',
+                    time_period: str = '370',
                     scale: str = 'lumped') -> pd.DataFrame:
     """Load time series data from netCDF files into pandas DataFrame.
 
@@ -156,7 +159,7 @@ def load_timeseries(data_dir: Path,
     data_dir : Path
         Path to the root data directory. This folder must contain a subfolder 'forcings/<scale>/<ensemble_member>'
         containing the time series data files.
-    ssp : str, default '370'
+    time_period : str, default '370'
         The Shared Socioeconomic Pathway (SSP) scenario code to match in the filename (e.g., '370').
     scale : str, default 'lumped'
         The spatial scale subdirectory to use within 'forcings' (e.g., 'lumped').
@@ -171,12 +174,12 @@ def load_timeseries(data_dir: Path,
         Time-indexed DataFrame containing basin time series data.
     """
     if not ensemble_member:
-        raise ValueError('Ensemble member must be specified in config file.')
+        raise ValueError('Ensemble member name (or "Hist-Daymet-USGS-UA") must be specified in config file.')
     if not basin:
         raise ValueError('At least one basin must be specified via filenames in config file.')
 
     files_dir = data_dir / "forcings" / scale / ensemble_member
-    files = list(files_dir.glob(f'*{ssp}*.txt'))
+    files = list(files_dir.glob(f'*.txt'))
     basin_files = [f for f in files if basin in f.stem]
 
     if len(basin_files) == 0:

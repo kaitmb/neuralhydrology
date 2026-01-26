@@ -329,8 +329,8 @@ class Config(object):
         return self._get_value_verbose("dataset")
 
     @property
-    def ssp(self) -> str:
-        return self._get_value_verbose("ssp")
+    def time_period(self) -> str:
+        return self._get_value_verbose("time_period")
 
     @property
     def scale(self) -> str:
