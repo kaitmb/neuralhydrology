@@ -98,12 +98,12 @@ def load_attributes(data_dir: Path,
         raise NameError(f"Ensemble member/GCM of interest (or 'Hist-Daymet-USGS-UA') must be specified.")
 
     # Get list of all files in attribute folder
-    files = list(attributes_path.glob(f'*TRAIN*.txt'))
+    files = list(attributes_path.glob(f'*.txt'))
     if not files:
         raise FileNotFoundError(f"No attributes files found.")
 
     # Select files for time period
-    selected_files = [f for f in files if time_period in f.name]
+    selected_files = [f for f in files if f"{time_period}_TRAIN" in f.name]
     # Select files for ensemble member
     selected_files = [f for f in selected_files if ensemble_member in f.name]
     # Add GAGES-II file to list
