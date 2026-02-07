@@ -59,9 +59,7 @@ class BishayWUS(BaseDataset):
         """Load input and output data. """
         df = load_timeseries(data_dir=self.cfg.data_dir,
                              ensemble_member=self.cfg.ensemble_member,
-                             basin=basin,
-                             time_period=self.cfg.time_period,
-                             scale=self.cfg.scale)
+                             basin=basin)
         return df
 
     def _load_attributes(self) -> pd.DataFrame:
@@ -100,7 +98,7 @@ def load_attributes(data_dir: Path,
         raise NameError(f"Ensemble member/GCM of interest (or 'Hist-Daymet-USGS-UA') must be specified.")
 
     # Get list of all files in attribute folder
-    files = list(attributes_path.glob(f'*.csv'))
+    files = list(attributes_path.glob(f'*TRAIN*.txt'))
     if not files:
         raise FileNotFoundError(f"No attributes files found.")
 
@@ -149,22 +147,16 @@ def load_attributes(data_dir: Path,
 
 def load_timeseries(data_dir: Path,
                     ensemble_member: str = None,
-                    basin: str = None,
-                    time_period: str = '370',
-                    scale: str = 'lumped') -> pd.DataFrame:
+                    basin: str = None) -> pd.DataFrame:
     """Load time series data from netCDF files into pandas DataFrame.
 
     Parameters
     ----------
     data_dir : Path
-        Path to the root data directory. This folder must contain a subfolder 'forcings/<scale>/<ensemble_member>'
+        Path to the root data directory. This folder must contain a subfolder 'forcings/<ensemble_member>'
         containing the time series data files.
-    time_period : str, default '370'
-        The Shared Socioeconomic Pathway (SSP) scenario code to match in the filename (e.g., '370').
-    scale : str, default 'lumped'
-        The spatial scale subdirectory to use within 'forcings' (e.g., 'lumped').
     ensemble_member : str
-        The ensemble member identifier subdirectory to use within 'forcings/<scale>'.
+        The ensemble member identifier subdirectory to use within 'forcings'.
     basin : str
         8-digit USGS identifier of the basin.
 
@@ -178,7 +170,7 @@ def load_timeseries(data_dir: Path,
     if not basin:
         raise ValueError('At least one basin must be specified via filenames in config file.')
 
-    files_dir = data_dir / "forcings" / scale / ensemble_member
+    files_dir = data_dir / "forcings" / ensemble_member
     files = list(files_dir.glob(f'*.txt'))
     basin_files = [f for f in files if basin in f.stem]
 
