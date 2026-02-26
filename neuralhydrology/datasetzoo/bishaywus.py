@@ -55,21 +55,29 @@ class BishayWUS(BaseDataset):
                                         id_to_int=id_to_int,
                                         scaler=scaler)
 
-    def _load_basin_data(self, basin: str) -> pd.DataFrame:
-        """Load input and output data. """
-        df = load_timeseries(data_dir=self.cfg.data_dir,
-                             ensemble_member=self.cfg.ensemble_member,
-                             basin=basin)
-        return df
-
     def _load_attributes(self) -> pd.DataFrame:
         """Load static catchment attributes."""
-        return load_attributes(self.cfg.data_dir, self.cfg.ensemble_member, self.basins, self.cfg.time_period)
+        return load_attributes(data_dir = self.cfg.data_dir,
+                               basins = self.basins,
+                               ensemble_member = self.cfg.ensemble_member,
+                               time_period = self.cfg.time_period,
+                               ssp = self.cfg.ssp)
+
+    def _load_basin_data(self, basin: str) -> pd.DataFrame:
+        """Load input and output data. """
+        df = load_timeseries(data_dir = self.cfg.data_dir,
+                             basin = basin,
+                             ensemble_member = self.cfg.ensemble_member,
+                             ssp = self.cfg.ssp,
+                             )
+        return df
 
 def load_attributes(data_dir: Path,
-                    ensemble_member: str = None,
                     basins: List[str] = None,
-                    time_period: str = None) -> pd.DataFrame:
+                    ensemble_member: str = None,
+                    time_period: str = None,
+                    ssp: str = None,
+                    ) -> pd.DataFrame:
     """Load static attributes from one or more CSV files.
 
     Parameters
@@ -96,6 +104,8 @@ def load_attributes(data_dir: Path,
         raise NameError(f"Time period of interest must be specified.")
     if not ensemble_member:
         raise NameError(f"Ensemble member/GCM of interest (or 'Hist-Daymet-USGS-UA') must be specified.")
+    if not ssp:
+        raise NameError(f"Emissions scenario (ssp) must be specified.")
 
     # Get list of all files in attribute folder
     files = list(attributes_path.glob(f'*.txt'))
@@ -106,6 +116,8 @@ def load_attributes(data_dir: Path,
     selected_files = [f for f in files if f"{time_period}_TRAIN" in f.name]
     # Select files for ensemble member
     selected_files = [f for f in selected_files if ensemble_member in f.name]
+    # Select files for ssp
+    selected_files = [f for f in selected_files if ssp in f.name]
     # Add GAGES-II file to list
     selected_files.append([f for f in files if "GAGES-II" in f.name][0])
 
@@ -146,8 +158,10 @@ def load_attributes(data_dir: Path,
     return df
 
 def load_timeseries(data_dir: Path,
+                    basin: str = None,
                     ensemble_member: str = None,
-                    basin: str = None) -> pd.DataFrame:
+                    ssp: str = None,
+                    ) -> pd.DataFrame:
     """Load time series data from netCDF files into pandas DataFrame.
 
     Parameters
@@ -171,7 +185,7 @@ def load_timeseries(data_dir: Path,
         raise ValueError('At least one basin must be specified via filenames in config file.')
 
     files_dir = data_dir / "forcings" / ensemble_member
-    files = list(files_dir.glob(f'*.txt'))
+    files = list(files_dir.glob(f'*{ssp}*.txt'))
     basin_files = [f for f in files if basin in f.stem]
 
     if len(basin_files) == 0:

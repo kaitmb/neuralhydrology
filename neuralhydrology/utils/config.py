@@ -341,6 +341,10 @@ class Config(object):
         return self._get_value_verbose("ensemble_member")
 
     @property
+    def ssp(self) -> str:
+        return self._get_value_verbose("ssp")
+
+    @property
     def device(self) -> str:
         return self._cfg.get("device", None)
 
