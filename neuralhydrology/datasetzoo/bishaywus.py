@@ -76,7 +76,7 @@ def load_attributes(data_dir: Path,
                     basins: List[str] = None,
                     ensemble_member: str = None,
                     time_period: str = None,
-                    ssp: str = None,
+                    ssp: int = None,
                     ) -> pd.DataFrame:
     """Load static attributes from one or more CSV files.
 
@@ -117,7 +117,7 @@ def load_attributes(data_dir: Path,
     # Select files for ensemble member
     selected_files = [f for f in selected_files if ensemble_member in f.name]
     # Select files for ssp
-    selected_files = [f for f in selected_files if ssp in f.name]
+    selected_files = [f for f in selected_files if str(ssp) in f.name]
     # Add GAGES-II file to list
     selected_files.append([f for f in files if "GAGES-II" in f.name][0])
 
@@ -160,7 +160,7 @@ def load_attributes(data_dir: Path,
 def load_timeseries(data_dir: Path,
                     basin: str = None,
                     ensemble_member: str = None,
-                    ssp: str = None,
+                    ssp: int = None,
                     ) -> pd.DataFrame:
     """Load time series data from netCDF files into pandas DataFrame.
 
@@ -185,7 +185,7 @@ def load_timeseries(data_dir: Path,
         raise ValueError('At least one basin must be specified via filenames in config file.')
 
     files_dir = data_dir / "forcings" / ensemble_member
-    files = list(files_dir.glob(f'*{ssp}*.txt'))
+    files = list(files_dir.glob(f'*{str(ssp)}*.txt'))
     basin_files = [f for f in files if basin in f.stem]
 
     if len(basin_files) == 0:
