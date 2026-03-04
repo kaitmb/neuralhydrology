@@ -396,7 +396,7 @@ def _get_predict_last_n(cfg: Config) -> dict:
     return predict_last_n
 
 class MaskedNSEandRMSELoss(BaseLoss):
-    """Basin-averaged Nash--Sutcliffe Model Efficiency Coefficient loss and relative root mean squared error loss.
+    """Basin-averaged Nash--Sutcliffe Model Efficiency Coefficient loss and root mean squared error loss.
 
     To use this loss in a forward pass, the passed `prediction` dict must contain
     the key ``y_hat``, and the `data` dict must contain ``y`` and ``per_basin_target_stds``.
@@ -443,6 +443,63 @@ class MaskedNSEandRMSELoss(BaseLoss):
 
         # Add together
         loss = nse_loss + rmse_loss
+        return loss
+
+    @staticmethod
+    def _subset_additional_data(additional_data: Dict[str, torch.Tensor], n_target: int) -> Dict[str, torch.Tensor]:
+        # here we need to subset the per_basin_target_stds. We slice to keep the shape of [bs, seq, 1]
+        return {key: value[:, :, n_target:n_target + 1] for key, value in additional_data.items()}
+
+
+class MaskedNSEandrRMSELoss(BaseLoss):
+    """Basin-averaged Nash--Sutcliffe Model Efficiency Coefficient loss and relative root mean squared error loss.
+
+    To use this loss in a forward pass, the passed `prediction` dict must contain
+    the key ``y_hat``, and the `data` dict must contain ``y`` and ``per_basin_target_stds``.
+
+    A description of the loss function is available in [#]_.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    eps: float, optional
+        Small constant for numeric stability.
+
+    References
+    ----------
+    .. [#] Kratzert, F., Klotz, D., Shalev, G., Klambauer, G., Hochreiter, S., and Nearing, G.: "Towards learning
+       universal, regional, and local hydrological behaviors via machine learning applied to large-sample datasets"
+       *Hydrology and Earth System Sciences*, 2019, 23, 5089-5110, doi:10.5194/hess-23-5089-2019
+    """
+
+    def __init__(self, cfg: Config, eps: float = 0.1):
+        super(MaskedNSEandRMSELoss, self).__init__(cfg,
+                                            prediction_keys=['y_hat'],
+                                            ground_truth_keys=['y'],
+                                            additional_data=['per_basin_target_stds'])
+        self.eps = eps
+
+    def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
+        mask = ~torch.isnan(ground_truth['y'])
+        y_hat = prediction['y_hat'][mask]
+        y = ground_truth['y'][mask]
+        per_basin_target_stds = kwargs['per_basin_target_stds']
+        # expand dimension 1 to predict_last_n
+        per_basin_target_stds = per_basin_target_stds.expand_as(prediction['y_hat'])[mask]
+
+        # NSE
+        squared_error = (y_hat - y)**2
+        weights = 1 / (per_basin_target_stds + self.eps)**2
+        scaled_loss = weights * squared_error
+        nse_loss = torch.mean(scaled_loss)
+
+        # RMSE
+        rmse_loss = torch.sqrt(0.5 * torch.mean((y_hat - y)**2))
+        rrmse_loss = rmse_loss / torch.mean(y)
+
+        # Add together
+        loss = nse_loss + rrmse_loss
         return loss
 
     @staticmethod

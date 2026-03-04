@@ -71,6 +71,8 @@ def get_loss_obj(cfg: Config) -> loss.BaseLoss:
         loss_obj = loss.MaskedUMALLoss(cfg)
     elif cfg.loss.lower()=="nse-rmse":
         loss_obj = loss.MaskedNSEandRMSELoss(cfg)
+    elif cfg.loss.lower()=="nse-rrmse":
+        loss_obj = loss.MaskedNSEandrRMSELoss(cfg)
     else:
         raise NotImplementedError(f"{cfg.loss} not implemented or not linked in `get_loss()`")
 
