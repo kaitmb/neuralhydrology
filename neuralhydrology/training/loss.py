@@ -235,7 +235,7 @@ class MaskedNSELoss(BaseLoss):
        *Hydrology and Earth System Sciences*, 2019, 23, 5089-5110, doi:10.5194/hess-23-5089-2019
     """
 
-    def __init__(self, cfg: Config, eps: float = 0.1):
+    def __init__(self, cfg: Config, eps: float = 1e-6):
         super(MaskedNSELoss, self).__init__(cfg,
                                             prediction_keys=['y_hat'],
                                             ground_truth_keys=['y'],
@@ -417,7 +417,7 @@ class MaskedNSEandRMSELoss(BaseLoss):
        *Hydrology and Earth System Sciences*, 2019, 23, 5089-5110, doi:10.5194/hess-23-5089-2019
     """
 
-    def __init__(self, cfg: Config, eps: float = 0.1):
+    def __init__(self, cfg: Config, eps: float = 1e-6):
         super(MaskedNSEandRMSELoss, self).__init__(cfg,
                                             prediction_keys=['y_hat'],
                                             ground_truth_keys=['y'],
@@ -473,7 +473,7 @@ class MaskedNSEandrRMSELoss(BaseLoss):
        *Hydrology and Earth System Sciences*, 2019, 23, 5089-5110, doi:10.5194/hess-23-5089-2019
     """
 
-    def __init__(self, cfg: Config, eps: float = 0.1):
+    def __init__(self, cfg: Config, eps: float = 1e-6):
         super(MaskedNSEandRMSELoss, self).__init__(cfg,
                                             prediction_keys=['y_hat'],
                                             ground_truth_keys=['y'],
@@ -496,7 +496,7 @@ class MaskedNSEandrRMSELoss(BaseLoss):
 
         # RMSE
         rmse_loss = torch.sqrt(0.5 * torch.mean((y_hat - y)**2))
-        rrmse_loss = rmse_loss / torch.mean(y)
+        rrmse_loss = rmse_loss / (torch.mean(y) + self.eps)
 
         # Add together
         loss = nse_loss + rrmse_loss
