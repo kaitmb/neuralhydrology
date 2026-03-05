@@ -315,3 +315,11 @@ class MaskedNSEandrRMSELoss(BaseLoss):
     def _subset_additional_data(additional_data: Dict[str, torch.Tensor], n_target: int) -> Dict[str, torch.Tensor]:
         # here we need to subset the per_basin_target_stds. We slice to keep the shape of [bs, seq, 1]
         return {key: value[:, :, n_target:n_target + 1] for key, value in additional_data.items()}
+
+def _get_predict_last_n(cfg: Config) -> dict:
+    predict_last_n = cfg.predict_last_n
+    if isinstance(predict_last_n, int):
+        predict_last_n = {'': predict_last_n}
+    if len(predict_last_n) == 1:
+        predict_last_n = {'': list(predict_last_n.values())[0]}  # if there's only one frequency, we omit its identifier
+    return predict_last_n
