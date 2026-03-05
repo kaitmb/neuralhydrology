@@ -305,7 +305,7 @@ class MaskedNSEandrRMSELoss(BaseLoss):
 
         # RMSE
         rmse_loss = torch.sqrt(0.5 * torch.mean((y_hat - y)**2))
-        rrmse_loss = rmse_loss / torch.mean(y)
+        rrmse_loss = abs(rmse_loss / torch.mean(y))
 
         # Add together
         loss = nse_loss + rrmse_loss
