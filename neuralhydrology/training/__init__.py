@@ -69,8 +69,6 @@ def get_loss_obj(cfg: Config) -> loss.BaseLoss:
         loss_obj = loss.MaskedCMALLoss(cfg)
     elif cfg.loss.lower() == "umalloss":
         loss_obj = loss.MaskedUMALLoss(cfg)
-    elif cfg.loss.lower()=="nse-rmse":
-        loss_obj = loss.MaskedNSEandRMSELoss(cfg)
     elif cfg.loss.lower()=="nse-rrmse":
         loss_obj = loss.MaskedNSEandrRMSELoss(cfg)
     else:

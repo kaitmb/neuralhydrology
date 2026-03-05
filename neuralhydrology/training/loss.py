@@ -282,7 +282,7 @@ class MaskedNSEandrRMSELoss(BaseLoss):
        *Hydrology and Earth System Sciences*, 2019, 23, 5089-5110, doi:10.5194/hess-23-5089-2019
     """
 
-    def __init__(self, cfg: Config, eps: float = 1e-6):
+    def __init__(self, cfg: Config, eps: float = 0.1):
         super(MaskedNSEandrRMSELoss, self).__init__(cfg,
                                                    prediction_keys=['y_hat'],
                                                    ground_truth_keys=['y'],
