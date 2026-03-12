@@ -48,7 +48,12 @@ class BaseTester(object):
         If True, the model weights will be initialized with the checkpoint from the last available epoch in `run_dir`.
     """
 
-    def __init__(self, cfg: Config, run_dir: Path, period: str = "test", init_model: bool = True):
+    def __init__(self,
+                 cfg: Config,
+                 run_dir: Path,
+                 period: str = "test",
+                 init_model: bool = True):
+
         self.cfg = cfg
         self.run_dir = run_dir
         self.init_model = init_model
@@ -159,7 +164,8 @@ class BaseTester(object):
                  save_all_output: bool = False,
                  metrics: Union[list, dict] = [],
                  model: torch.nn.Module = None,
-                 experiment_logger: Logger = None) -> dict:
+                 experiment_logger: Logger = None,
+                 ) -> dict:
         """Evaluate the model.
         
         Parameters
@@ -356,7 +362,10 @@ class BaseTester(object):
         if save_all_output:
             states_to_save = all_output
         if save_results or save_all_output:
-            self._save_results(results=results_to_save, states=states_to_save, epoch=epoch)
+            self._save_results(results=results_to_save,
+                               states=states_to_save,
+                               epoch=epoch,
+                               )
 
         return results
 
@@ -380,7 +389,11 @@ class BaseTester(object):
                 # make sure the preamble is a valid file name
                 experiment_logger.log_figures(figures, freq, preamble=re.sub(r"[^A-Za-z0-9\._\-]+", "", target_var))
 
-    def _save_results(self, results: Optional[dict], states: Optional[dict] = None, epoch: int = None):
+    def _save_results(self,
+                      results: Optional[dict],
+                      states: Optional[dict] = None,
+                      epoch: int = None,
+                      ):
         """Store results in various formats to disk.
         
         Developer note: We cannot store the time series data (the xarray objects) as netCDF file but have to use
@@ -402,16 +415,41 @@ class BaseTester(object):
             if "all" in metrics_list:
                 metrics_list = get_available_metrics()
             df = metrics_to_dataframe(results, metrics_list, self.cfg.target_variables)
-            metrics_file = parent_directory / f"{self.period}_metrics.csv"
-            df.to_csv(metrics_file)
-            LOGGER.info(f"Stored metrics at {metrics_file}")
+
+            # Check if this is a permutation experiment
+            if self.cfg.permutation_feature:
+                if self.cfg.permutation_seed:
+                    metrics_file = parent_directory / f"{self.period}_permuted_{self.cfg.permutation_feature}_{self.cfg.permutation_seed}_metrics.csv"
+                    df.to_csv(metrics_file)
+                    LOGGER.info(f"Stored metrics at {metrics_file}")
+                elif not self.cfg.permutation_seed:
+                    metrics_file = parent_directory / f"{self.period}_permuted_{self.cfg.permutation_feature}_metrics.csv"
+                    df.to_csv(metrics_file)
+                    LOGGER.info(f"Stored metrics at {metrics_file}")
+            else:
+                metrics_file = parent_directory / f"{self.period}_metrics.csv"
+                df.to_csv(metrics_file)
+                LOGGER.info(f"Stored metrics at {metrics_file}")
 
         # store all results packed as pickle file
         if results is not None:
-            result_file = parent_directory / f"{self.period}_results.p"
-            with result_file.open("wb") as fp:
-                pickle.dump(results, fp)
-            LOGGER.info(f"Stored results at {result_file}")
+            if self.cfg.permutation_feature:
+                if self.cfg.permutation_seed:
+                    result_file = parent_directory / f"{self.period}_permuted_{self.cfg.permutation_feature}_{self.cfg.permutation_seed}_results.p"
+                    with result_file.open("wb") as fp:
+                        pickle.dump(results, fp)
+                    LOGGER.info(f"Stored results at {result_file}")
+
+                elif not self.cfg.permutation_seed:
+                    result_file = parent_directory / f"{self.period}_permuted_{self.cfg.permutation_feature}_results.p"
+                    with result_file.open("wb") as fp:
+                        pickle.dump(results, fp)
+                    LOGGER.info(f"Stored results at {result_file}")
+            else:
+                result_file = parent_directory / f"{self.period}_results.p"
+                with result_file.open("wb") as fp:
+                    pickle.dump(results, fp)
+                LOGGER.info(f"Stored results at {result_file}")
 
         # store all model output packed as pickle file
         if states is not None:

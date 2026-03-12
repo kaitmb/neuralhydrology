@@ -195,7 +195,12 @@ def finetune(config_file: Path = None, gpu: int = None):
     start_training(config)
 
 
-def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
+def eval_run(run_dir: Path,
+             period: str,
+             epoch: int = None,
+             gpu: int = None,
+             permutation_feature: str = None,
+             permutation_seed: int = None,):
     """Start evaluating a trained model.
     
     Parameters
@@ -211,7 +216,10 @@ def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
         Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
-    config = Config(run_dir / "config.yaml")
+    if permutation_feature and permutation_seed:
+        config = Config(run_dir / f"config_permutation_{permutation_feature}_{permutation_seed}.yaml")
+    else:
+        config = Config(run_dir / "config.yaml")
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
     if gpu is not None and gpu >= 0:

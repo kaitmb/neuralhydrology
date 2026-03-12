@@ -69,6 +69,8 @@ class BishayWUS(BaseDataset):
                              basin = basin,
                              ensemble_member = self.cfg.ensemble_member,
                              ssp = self.cfg.ssp,
+                             permutation_feature = self.cfg.permutation_feature,
+                             permutation_seed = self.cfg.permutation_seed,
                              )
         return df
 
@@ -161,6 +163,8 @@ def load_timeseries(data_dir: Path,
                     basin: str = None,
                     ensemble_member: str = None,
                     ssp: int = None,
+                    permutation_feature: str = None,
+                    permutation_seed: int = None,
                     ) -> pd.DataFrame:
     """Load time series data from netCDF files into pandas DataFrame.
 
@@ -198,5 +202,13 @@ def load_timeseries(data_dir: Path,
     df = df.rename(columns={"time": "date"})
     df = df.set_index("date")
 
-    return df
+    if not permutation_feature:
+        return df
+    else:
+        if permutation_seed:
+            df[permutation_feature] = np.random.default_rng(seed=permutation_seed).permutation(df[permutation_feature].values)
+            return df
+        else:
+            df[permutation_feature] = np.random.permutation(df[permutation_feature].values)
+            return df
 

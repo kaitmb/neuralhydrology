@@ -345,6 +345,14 @@ class Config(object):
         return self._get_value_verbose("ssp")
 
     @property
+    def permutation_feature(self) -> str:
+        return self._get_value_verbose("permutation_feature")
+
+    @property
+    def permutation_seed(self) -> int:
+        return self._get_value_verbose("permutation_seed")
+
+    @property
     def device(self) -> str:
         return self._cfg.get("device", None)
 
