@@ -206,9 +206,17 @@ def load_timeseries(data_dir: Path,
         return df
     else:
         if permutation_seed:
-            df[permutation_feature] = np.random.default_rng(seed=permutation_seed).permutation(df[permutation_feature].values)
-            return df
+            if permutation_feature == "t" or permutation_feature == "temp":
+                df[["tmin", "tmax"]] = np.random.default_rng(seed=permutation_seed).permutation(df[["tmin", "tmax"]].values)
+                return df
+            else:
+                df[permutation_feature] = np.random.default_rng(seed=permutation_seed).permutation(df[permutation_feature].values)
+                return df
         else:
-            df[permutation_feature] = np.random.permutation(df[permutation_feature].values)
-            return df
+            if permutation_feature=="t" or permutation_feature=="temp":
+                df[["tmin", "tmax"]] = np.random.permutation(df[["tmin", "tmax"]].values)
+                return df
+            else:
+                df[permutation_feature] = np.random.permutation(df[permutation_feature].values)
+                return df
 
