@@ -69,6 +69,8 @@ class BishayWUS(BaseDataset):
                              basin = basin,
                              ensemble_member = self.cfg.ensemble_member,
                              ssp = self.cfg.ssp,
+                             test_start_date = self.cfg.test_start_date,
+                             test_end_date = self.cfg.test_end_date,
                              permutation_feature = self.cfg.permutation_feature,
                              permutation_seed = self.cfg.permutation_seed,
                              )
@@ -163,6 +165,8 @@ def load_timeseries(data_dir: Path,
                     basin: str = None,
                     ensemble_member: str = None,
                     ssp: int = None,
+                    test_start_date = None,
+                    test_end_date = None,
                     permutation_feature: str = None,
                     permutation_seed: int = None,
                     ) -> pd.DataFrame:
@@ -205,18 +209,22 @@ def load_timeseries(data_dir: Path,
     if not permutation_feature:
         return df
     else:
-        if permutation_seed:
-            if permutation_feature == "t" or permutation_feature == "temp":
-                df[["tmin", "tmax"]] = np.random.default_rng(seed=permutation_seed).permutation(df[["tmin", "tmax"]].values)
-                return df
-            else:
-                df[permutation_feature] = np.random.default_rng(seed=permutation_seed).permutation(df[permutation_feature].values)
-                return df
+        start = pd.to_datetime(test_start_date)
+        end = pd.to_datetime(test_end_date)
+        mask = (df.index >= start) & (df.index <= end)
+
+        if not permutation_seed:
+            # Assign permutation seed number if not already assigned
+            permutation_seed = np.random.default_rng().integers(low=0, high=100)
+
+        if permutation_feature in ("t", "temp"):
+            vals = df.loc[mask, ["tmin", "tmax"]].to_numpy()
+            permuted = np.random.default_rng(permutation_seed).permutation(vals)
+            df.loc[mask, ["tmin", "tmax"]] = permuted
         else:
-            if permutation_feature=="t" or permutation_feature=="temp":
-                df[["tmin", "tmax"]] = np.random.permutation(df[["tmin", "tmax"]].values)
-                return df
-            else:
-                df[permutation_feature] = np.random.permutation(df[permutation_feature].values)
-                return df
+            vals = df.loc[mask, permutation_feature].to_numpy()
+            permuted = np.random.default_rng(permutation_seed).permutation(vals)
+            df.loc[mask, permutation_feature] = permuted
+
+        return df
 
