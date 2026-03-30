@@ -213,6 +213,28 @@ class MaskedRMSELoss(BaseLoss):
         loss = torch.sqrt(0.5 * torch.mean((prediction['y_hat'][mask] - ground_truth['y'][mask])**2))
         return loss
 
+class MaskedrRMSELoss(BaseLoss):
+    """Root mean squared error loss.
+
+    To use this loss in a forward pass, the passed `prediction` dict must contain
+    the key ``y_hat``, and the `data` dict must contain ``y``.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    """
+
+    def __init__(self, cfg: Config):
+        super(MaskedrRMSELoss, self).__init__(cfg, prediction_keys=['y_hat'], ground_truth_keys=['y'])
+
+    def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
+        mask = ~torch.isnan(ground_truth['y'])
+        rmse_loss = torch.sqrt(0.5 * torch.mean((prediction['y_hat'][mask] - ground_truth['y'][mask])**2))
+        rrmse_loss = abs(rmse_loss / torch.mean(ground_truth['y'][mask]))
+
+        return rrmse_loss
+
 class MaskedNSELoss(BaseLoss):
     """Basin-averaged Nash--Sutcliffe Model Efficiency Coefficient loss.
 
