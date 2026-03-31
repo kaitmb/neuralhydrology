@@ -346,11 +346,11 @@ class Config(object):
 
     @property
     def permutation_feature(self) ->  Optional[str]:
-        return self._get_value_verbose("permutation_feature")
+        return self._cfg["permutation_feature"]
 
     @property
     def permutation_seed(self) -> Optional[int]:
-        return self._get_value_verbose("permutation_seed")
+        return self._cfg["permutation_seed"]
 
     @property
     def device(self) -> str:
