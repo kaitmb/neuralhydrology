@@ -345,11 +345,11 @@ class Config(object):
         return self._get_value_verbose("ssp")
 
     @property
-    def permutation_feature(self) -> str:
+    def permutation_feature(self) ->  Optional[str]:
         return self._get_value_verbose("permutation_feature")
 
     @property
-    def permutation_seed(self) -> int:
+    def permutation_seed(self) -> Optional[int]:
         return self._get_value_verbose("permutation_seed")
 
     @property
