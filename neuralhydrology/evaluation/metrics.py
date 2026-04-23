@@ -21,7 +21,7 @@ def get_available_metrics() -> List[str]:
         List of implemented metric names.
     """
     metrics = [
-        "NSE", "MSE", "RMSE", "rRMSE", "KGE", "Alpha-NSE", "Pearson-r", "AMJJ-PBIAS", "AMJJ-NSE",
+        "NSE", "AMJJ-NSE", "MSE", "RMSE", "rRMSE", "KGE", "Alpha-NSE", "Pearson-r", "PBIAS", "AMJJ-PBIAS",
         "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV", "Peak-Timing", "Missed-Peaks", "Peak-MAPE"
     ]
     return metrics
@@ -90,6 +90,67 @@ def nse(obs: DataArray, sim: DataArray) -> float:
 
     return float(value)
 
+def amjj_nse(obs: DataArray, sim: DataArray) -> float:
+    """Calculate AMJJ NSE
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        AMJJ Nash-Sutcliffe Efficiency
+
+    """
+
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    if len(obs) < 2:
+        return np.nan
+
+    # Get unique years within dataset
+    years = np.unique(obs.datetime.dt.year.values.tolist())[1:] # Excluding first year (because we are using WY)
+
+    # Isolate AMJJ values
+    amjj_obs = obs.sel(datetime=obs.datetime.dt.month.isin([4, 5, 6]))
+    amjj_sim = sim.sel(datetime=obs.datetime.dt.month.isin([4, 5, 6]))
+
+    # Create list to calculate annual volumes for AMJJ streamflow
+    annual_obs  = []
+    annual_sim = []
+
+    for year in years:
+        # Make sure data exists for both obs and sim for a given year
+        obs_sel = amjj_obs.sel(datetime=amjj_obs.datetime.dt.year.isin([year]))
+        sim_sel = amjj_sim.sel(datetime=amjj_sim.datetime.dt.year.isin([year]))
+
+        if obs_sel.size == 0 or sim_sel.size == 0:
+            continue
+
+        annual_obs_value = float(obs_sel.sum().values.item())
+        annual_sim_value = float(sim_sel.sum().values.item())
+
+        annual_obs.append(annual_obs_value)
+        annual_sim.append(annual_sim_value)
+
+    # Calculate bias over all years
+    annual_obs = np.array(annual_obs)
+    annual_sim = np.array(annual_sim)
+
+    denominator = ((annual_obs - annual_obs.mean()) ** 2).sum()
+    numerator = ((annual_sim - annual_obs) ** 2).sum()
+
+    value = 1 - numerator / denominator
+
+    return float(value)
 
 def mse(obs: DataArray, sim: DataArray) -> float:
     r"""Calculate mean squared error.
@@ -373,6 +434,67 @@ def pearsonr(obs: DataArray, sim: DataArray) -> float:
 
     return float(r)
 
+def r2(obs: DataArray, sim: DataArray) -> float:
+    """Calculate R2 from pearson correlation coefficient (using scipy.stats.pearsonr)
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        Pearson correlation coefficient
+
+    """
+
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    if len(obs) < 2:
+        return np.nan
+
+    r, _ = stats.pearsonr(obs.values, sim.values)
+    r2 = r ** 2
+
+    return float(r2)
+
+def pbias(obs: DataArray, sim: DataArray) -> float:
+    """Calculate percent bias
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        AMJJ percent bias
+
+    """
+
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    if len(obs) < 2:
+        return np.nan
+
+    pbias = 100.0 * (sum(sim - obs)) / (sum(obs))
+
+    return float(pbias)
+
 def amjj_pbias(obs: DataArray, sim: DataArray) -> float:
     """Calculate AMJJ percent bias
 
@@ -431,67 +553,6 @@ def amjj_pbias(obs: DataArray, sim: DataArray) -> float:
 
     return float(pbias)
 
-def amjj_nse(obs: DataArray, sim: DataArray) -> float:
-    """Calculate AMJJ NSE
-
-    Parameters
-    ----------
-    obs : DataArray
-        Observed time series.
-    sim : DataArray
-        Simulated time series.
-
-    Returns
-    -------
-    float
-        AMJJ Nash-Sutcliffe Efficiency
-
-    """
-
-    # verify inputs
-    _validate_inputs(obs, sim)
-
-    # get time series with only valid observations
-    obs, sim = _mask_valid(obs, sim)
-
-    if len(obs) < 2:
-        return np.nan
-
-    # Get unique years within dataset
-    years = np.unique(obs.datetime.dt.year.values.tolist())[1:] # Excluding first year (because we are using WY)
-
-    # Isolate AMJJ values
-    amjj_obs = obs.sel(datetime=obs.datetime.dt.month.isin([4, 5, 6]))
-    amjj_sim = sim.sel(datetime=obs.datetime.dt.month.isin([4, 5, 6]))
-
-    # Create list to calculate annual volumes for AMJJ streamflow
-    annual_obs  = []
-    annual_sim = []
-
-    for year in years:
-        # Make sure data exists for both obs and sim for a given year
-        obs_sel = amjj_obs.sel(datetime=amjj_obs.datetime.dt.year.isin([year]))
-        sim_sel = amjj_sim.sel(datetime=amjj_sim.datetime.dt.year.isin([year]))
-
-        if obs_sel.size == 0 or sim_sel.size == 0:
-            continue
-
-        annual_obs_value = float(obs_sel.sum().values.item())
-        annual_sim_value = float(sim_sel.sum().values.item())
-
-        annual_obs.append(annual_obs_value)
-        annual_sim.append(annual_sim_value)
-
-    # Calculate bias over all years
-    annual_obs = np.array(annual_obs)
-    annual_sim = np.array(annual_sim)
-
-    denominator = ((annual_obs - annual_obs.mean()) ** 2).sum()
-    numerator = ((annual_sim - annual_obs) ** 2).sum()
-
-    value = 1 - numerator / denominator
-
-    return float(value)
 
 def fdc_fms(obs: DataArray, sim: DataArray, lower: float = 0.2, upper: float = 0.7) -> float:
     r"""Calculate the slope of the middle section of the flow duration curve [#]_
@@ -931,6 +992,7 @@ def calculate_all_metrics(obs: DataArray,
 
     results = {
         "NSE": nse(obs, sim),
+        "AMJJ-NSE": amjj_nse(obs, sim),
         "MSE": mse(obs, sim),
         "RMSE": rmse(obs, sim),
         "rRMSE": relative_rmse(obs, sim),
@@ -939,8 +1001,9 @@ def calculate_all_metrics(obs: DataArray,
         "Beta-KGE": beta_kge(obs, sim),
         "Beta-NSE": beta_nse(obs, sim),
         "Pearson-r": pearsonr(obs, sim),
+        "R2": r2(obs, sim),
+        "PBIAS": pbias(obs, sim),
         "AMJJ-PBIAS": amjj_pbias(obs, sim),
-        "AMJJ-NSE": amjj_nse(obs, sim),
         "FHV": fdc_fhv(obs, sim),
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
@@ -990,6 +1053,8 @@ def calculate_metrics(obs: DataArray,
     for metric in metrics:
         if metric.lower() == "nse":
             values["NSE"] = nse(obs, sim)
+        elif metric.lower()=="amjj-nse":
+            values["AMJJ-NSE"] = amjj_nse(obs, sim)
         elif metric.lower() == "mse":
             values["MSE"] = mse(obs, sim)
         elif metric.lower() == "rmse":
@@ -1006,10 +1071,12 @@ def calculate_metrics(obs: DataArray,
             values["Beta-NSE"] = beta_nse(obs, sim)
         elif metric.lower() == "pearson-r":
             values["Pearson-r"] = pearsonr(obs, sim)
+        elif metric.lower() == "r2":
+            values["R2"] = r2(obs, sim)
+        elif metric.lower() == "pbias":
+            values["PBIAS"] = pbias(obs, sim)
         elif metric.lower() == "amjj-pbias":
             values["AMJJ-PBIAS"] = amjj_pbias(obs, sim)
-        elif metric.lower()=="amjj-nse":
-            values["AMJJ-NSE"] = amjj_nse(obs, sim)
         elif metric.lower() == "fhv":
             values["FHV"] = fdc_fhv(obs, sim)
         elif metric.lower() == "fms":
