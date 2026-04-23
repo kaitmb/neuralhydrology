@@ -453,11 +453,11 @@ class BaseTester(object):
             else:
                 result_file = parent_directory / f"{self.period}_results.p"
                 if result_file.exists():
-                    date_tag = datetime.now().strftime("%m%d")  # e.g., 0423
-                    result_file = parent_directory / f"{self.period}_results_{date_tag}.p"
-                with result_file.open("wb") as fp:
-                    pickle.dump(results, fp)
-                LOGGER.info(f"Stored results at {result_file}")
+                    LOGGER.info(f"Results already stored at {result_file}.")
+                else:
+                    with result_file.open("wb") as fp:
+                        pickle.dump(results, fp)
+                    LOGGER.info(f"Stored results at {result_file}")
 
         # store all model output packed as pickle file
         if states is not None:
