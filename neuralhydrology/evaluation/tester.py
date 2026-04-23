@@ -13,6 +13,7 @@ import torch
 import xarray
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from datetime import datetime
 
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
@@ -428,6 +429,10 @@ class BaseTester(object):
                     LOGGER.info(f"Stored metrics at {metrics_file}")
             else:
                 metrics_file = parent_directory / f"{self.period}_metrics.csv"
+                if metrics_file.exists():
+                    date_tag = datetime.now().strftime("%m%d")  # e.g., 0423
+                    metrics_file = parent_directory / f"{self.period}_metrics_{date_tag}.csv"
+
                 df.to_csv(metrics_file)
                 LOGGER.info(f"Stored metrics at {metrics_file}")
 
@@ -447,6 +452,9 @@ class BaseTester(object):
                     LOGGER.info(f"Stored results at {result_file}")
             else:
                 result_file = parent_directory / f"{self.period}_results.p"
+                if result_file.exists():
+                    date_tag = datetime.now().strftime("%m%d")  # e.g., 0423
+                    result_file = parent_directory / f"{self.period}_results_{date_tag}.p"
                 with result_file.open("wb") as fp:
                     pickle.dump(results, fp)
                 LOGGER.info(f"Stored results at {result_file}")
