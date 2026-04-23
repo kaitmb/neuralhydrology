@@ -200,7 +200,8 @@ def eval_run(run_dir: Path,
              epoch: int = None,
              gpu: int = None,
              permutation_feature: str = None,
-             permutation_seed: int = None,):
+             permutation_seed: int = None,
+             config_name: str = None,):
     """Start evaluating a trained model.
     
     Parameters
@@ -216,7 +217,9 @@ def eval_run(run_dir: Path,
         Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
-    if permutation_feature and permutation_seed:
+    if config_name:
+        config = Config(config_name)
+    elif permutation_feature and permutation_seed:
         config = Config(run_dir / f"config_permutation_{permutation_feature}_{permutation_seed}.yaml")
     else:
         config = Config(run_dir / "config.yaml")
