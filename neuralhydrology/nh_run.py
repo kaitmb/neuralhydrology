@@ -218,7 +218,7 @@ def eval_run(run_dir: Path,
 
     """
     if config_name:
-        config = Config(config_name)
+        config = Config(run_dir / config_name)
     elif permutation_feature and permutation_seed:
         config = Config(run_dir / f"config_permutation_{permutation_feature}_{permutation_seed}.yaml")
     else:
