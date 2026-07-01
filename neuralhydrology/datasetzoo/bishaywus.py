@@ -217,14 +217,9 @@ def load_timeseries(data_dir: Path,
             # Assign permutation seed number if not already assigned
             permutation_seed = np.random.default_rng().integers(low=0, high=100)
 
-        if permutation_feature in ("t", "temp"):
-            vals = df.loc[mask, ["tmin", "tmax"]].to_numpy()
-            permuted = np.random.default_rng(permutation_seed).permutation(vals)
-            df.loc[mask, ["tmin", "tmax"]] = permuted
-        else:
-            vals = df.loc[mask, permutation_feature].to_numpy()
-            permuted = np.random.default_rng(permutation_seed).permutation(vals)
-            df.loc[mask, permutation_feature] = permuted
+        vals = df.loc[mask, permutation_feature].to_numpy()
+        permuted = np.random.default_rng(permutation_seed).permutation(vals)
+        df.loc[mask, permutation_feature] = permuted
 
         return df
 
